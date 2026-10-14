@@ -30,7 +30,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: web-console-release
-          path: dist/*/*
+          path: dist/${{ github.ref_name }}/*
           if-no-files-found: error
   docker:
     needs: checks
@@ -51,5 +51,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          fail_on_unmatched_files: true
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
