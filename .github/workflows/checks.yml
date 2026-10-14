@@ -1,0 +1,57 @@
+name: CI
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      WEBCONSOLE_BLI_BROWSER_FIXTURE: ${{ runner.temp }}/blikvm-browser.json
+      WEBCONSOLE_NATIVE_BROWSER_FIXTURE: ${{ runner.temp }}/native-browser.json
+      WEBCONSOLE_MANUAL_BROWSER_FIXTURE: ${{ runner.temp }}/manual-browser.json
+      WEBCONSOLE_PROXY_BROWSER_FIXTURE: ${{ runner.temp }}/proxy-browser.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: go mod verify
+      - run: go vet ./...
+      - run: go test -race ./... -count=1
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm test
+        working-directory: web
+      - uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        run: docker buildx build --load -t web-console:ci .
+      - name: Smoke test Docker CLI
+        run: docker run --rm web-console:ci -version
+  cross-compile:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go build -trimpath -buildvcs=false -o /tmp/web-console ./cmd/web-console
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}

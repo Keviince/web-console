@@ -1,0 +1,9 @@
+# docker compose -f compose.yaml -f compose.build.yaml up -d --build
+services:
+  web-console:
+    image: web-console:local
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        GO_MODULE_PROXY: ${GO_MODULE_PROXY:-https://proxy.golang.org,direct}

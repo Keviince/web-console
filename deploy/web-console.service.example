@@ -1,0 +1,25 @@
+[Unit]
+Description=web-console device portal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=web-console
+Group=web-console
+WorkingDirectory=/opt/web-console
+EnvironmentFile=/etc/web-console/environment
+Environment=ENCRYPTION_KEY_FILE=/etc/web-console/secrets/encryption_key
+Environment=OIDC_CLIENT_SECRET_FILE=/etc/web-console/secrets/oidc_client_secret
+Environment=DATA_DIR=/var/lib/web-console
+ExecStart=/opt/web-console/web-console
+Restart=on-failure
+StateDirectory=web-console
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

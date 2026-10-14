@@ -1,0 +1,42 @@
+# Replace domains, certificate paths, and upstream address for your environment.
+# The certificate must cover both console.example.com and *.console.example.com.
+map $http_upgrade $webconsole_connection {
+    default upgrade;
+    '' close;
+}
+
+upstream webconsole_backend {
+    server 127.0.0.1:8080;
+}
+
+server {
+    listen 80;
+    server_name console.example.com *.console.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name console.example.com *.console.example.com;
+    ssl_certificate /etc/nginx/certs/webconsole.fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/webconsole.key;
+
+    # Login callbacks and launch URLs contain single-use codes/tickets.
+    # Disable access logs here; web-console records sanitized event logs.
+    access_log off;
+    client_max_body_size 4g;
+
+    location / {
+        proxy_pass http://webconsole_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $webconsole_connection;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_redirect off;
+    }
+}
