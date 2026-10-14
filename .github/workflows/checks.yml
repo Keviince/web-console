@@ -10,10 +10,10 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     env:
-      WEBCONSOLE_BLI_BROWSER_FIXTURE: ${{ runner.temp }}/blikvm-browser.json
-      WEBCONSOLE_NATIVE_BROWSER_FIXTURE: ${{ runner.temp }}/native-browser.json
-      WEBCONSOLE_MANUAL_BROWSER_FIXTURE: ${{ runner.temp }}/manual-browser.json
-      WEBCONSOLE_PROXY_BROWSER_FIXTURE: ${{ runner.temp }}/proxy-browser.json
+      WEBCONSOLE_BLI_BROWSER_FIXTURE: ${{ github.workspace }}/blikvm-browser.json
+      WEBCONSOLE_NATIVE_BROWSER_FIXTURE: ${{ github.workspace }}/native-browser.json
+      WEBCONSOLE_MANUAL_BROWSER_FIXTURE: ${{ github.workspace }}/manual-browser.json
+      WEBCONSOLE_PROXY_BROWSER_FIXTURE: ${{ github.workspace }}/proxy-browser.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
