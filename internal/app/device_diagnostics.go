@@ -55,7 +55,7 @@ func classifyDeviceConnection(err error) (string, string) {
 	case errors.Is(err, errCertificatePin):
 		return "certificate_pin_mismatch", "设备证书指纹不匹配，请先核对设备证书"
 	case errors.Is(err, errPinnedCertificateTime):
-		return "certificate_outside_validity", "固定的设备证书已过期或尚未生效"
+		return "certificate_outside_validity", "固定的设备证书已过期或尚未生效；可在高级配置中选择「忽略证书有效期」"
 	case errors.Is(err, http.ErrSchemeMismatch):
 		return "https_on_http_port", "该端口返回 HTTP 响应，请核对设备协议和 HTTPS 端口"
 	}

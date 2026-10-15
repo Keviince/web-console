@@ -18,18 +18,19 @@ import (
 )
 
 type Service struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Slug           string `json:"slug"`
-	Type           string `json:"type"`
-	UpstreamURL    string `json:"upstreamUrl"`
-	EntryPath      string `json:"entryPath"`
-	Group          string `json:"group"`
-	Notes          string `json:"notes"`
-	TrustedCA      string `json:"trustedCa,omitempty"`
-	CertificatePin string `json:"certificatePin,omitempty"`
-	HasCredentials bool   `json:"hasCredentials"`
-	TPLinkProtocol string `json:"tplinkProtocol,omitempty"`
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Slug                  string `json:"slug"`
+	Type                  string `json:"type"`
+	UpstreamURL           string `json:"upstreamUrl"`
+	EntryPath             string `json:"entryPath"`
+	Group                 string `json:"group"`
+	Notes                 string `json:"notes"`
+	TrustedCA             string `json:"trustedCa,omitempty"`
+	CertificatePin        string `json:"certificatePin,omitempty"`
+	IgnoreCertificateTime bool   `json:"ignoreCertificateTime,omitempty"`
+	HasCredentials        bool   `json:"hasCredentials"`
+	TPLinkProtocol        string `json:"tplinkProtocol,omitempty"`
 }
 type Credentials struct {
 	Username string `json:"username"`
@@ -263,6 +264,7 @@ func validateService(s *Service, cfg Config) error {
 	if s.Type == "link" {
 		s.TrustedCA = ""
 		s.CertificatePin = ""
+		s.IgnoreCertificateTime = false
 		if s.EntryPath == "" {
 			s.EntryPath = "/"
 		}
@@ -299,7 +301,7 @@ func validateService(s *Service, cfg Config) error {
 	if s.CertificatePin != "" && u.Scheme != "https" {
 		return errors.New("证书指纹只适用于 HTTPS 设备")
 	}
-	if s.TrustedCA != "" || s.CertificatePin != "" {
+	if s.TrustedCA != "" || s.CertificatePin != "" || s.IgnoreCertificateTime {
 		if _, err := newTransport(*s); err != nil {
 			return err
 		}

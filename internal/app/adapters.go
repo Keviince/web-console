@@ -55,6 +55,9 @@ func adapterFor(kind string) deviceAdapter {
 }
 
 func newTransport(s Service) (*http.Transport, error) {
+	if s.IgnoreCertificateTime && s.CertificatePin == "" {
+		return nil, errors.New("忽略证书有效期仅适用于固定证书指纹模式")
+	}
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.Proxy = nil
 	t.DialContext = (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext
@@ -81,7 +84,7 @@ func newTransport(s Service) (*http.Transport, error) {
 				return errCertificatePin
 			}
 			now := time.Now()
-			if now.Before(leaf.NotBefore) || now.After(leaf.NotAfter) {
+			if !s.IgnoreCertificateTime && (now.Before(leaf.NotBefore) || now.After(leaf.NotAfter)) {
 				return errPinnedCertificateTime
 			}
 			return nil

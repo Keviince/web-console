@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -282,7 +283,7 @@ func (a *App) dropProxyTransport(id string) {
 }
 
 func (a *App) proxyTransport(s Service) (*http.Transport, error) {
-	fingerprint := sha256.Sum256([]byte(s.UpstreamURL + "\x00" + s.TrustedCA + "\x00" + s.CertificatePin))
+	fingerprint := sha256.Sum256([]byte(s.UpstreamURL + "\x00" + s.TrustedCA + "\x00" + s.CertificatePin + "\x00" + strconv.FormatBool(s.IgnoreCertificateTime)))
 	a.transportMu.Lock()
 	defer a.transportMu.Unlock()
 	if a.transports == nil {

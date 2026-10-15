@@ -10,3 +10,5 @@
 
 .device-icon.pve,.device-icon.esxi{background:#f7f0e7;color:#b17b3d}.device-icon.tplink,.device-icon.xiaomi{background:#eaf4f5;color:#4a8b91}
 .type-tabs{min-width:0;max-width:100%;overflow-x:auto;flex-wrap:nowrap}.type-tabs button{flex-shrink:0;white-space:nowrap}
+
+.field .checkbox-field{display:flex;align-items:center;gap:9px;line-height:1.6;cursor:pointer}.field .checkbox-field input{width:16px;height:16px;flex:0 0 16px;margin:0;padding:0;accent-color:var(--accent)}

@@ -277,17 +277,13 @@ func TestNanoOriginalLogoutStopsAutomaticLogin(t *testing.T) {
 	}
 }
 
-func bareCertificate(t *testing.T, expired bool) (tls.Certificate, *x509.Certificate) {
+func bareCertificate(t *testing.T, notBefore, notAfter time.Time) (tls.Certificate, *x509.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	end := time.Now().Add(time.Hour)
-	if expired {
-		end = time.Now().Add(-time.Hour)
-	}
-	template := &x509.Certificate{SerialNumber: big.NewInt(time.Now().UnixNano()), Subject: pkix.Name{CommonName: "localhost"}, NotBefore: time.Now().Add(-2 * time.Hour), NotAfter: end, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	template := &x509.Certificate{SerialNumber: big.NewInt(time.Now().UnixNano()), Subject: pkix.Name{CommonName: "localhost"}, NotBefore: notBefore, NotAfter: notAfter, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
 	if err != nil {
 		t.Fatal(err)
@@ -299,19 +295,41 @@ func bareCertificate(t *testing.T, expired bool) (tls.Certificate, *x509.Certifi
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}, cert
 }
 func TestCertificatePinWithoutSAN(t *testing.T) {
-	for _, mode := range []string{"correct", "wrong", "expired", "default"} {
-		t.Run(mode, func(t *testing.T) {
-			cert, leaf := bareCertificate(t, mode == "expired")
+	for _, tc := range []struct {
+		name                                         string
+		expired, future, wrongPin, noPin, ignoreTime bool
+		wantError                                    error
+		wantTrustFailure                             bool
+	}{
+		{name: "correct"},
+		{name: "wrong", wrongPin: true, wantError: errCertificatePin},
+		{name: "expired", expired: true, wantError: errPinnedCertificateTime},
+		{name: "future", future: true, wantError: errPinnedCertificateTime},
+		{name: "ignore expired", expired: true, ignoreTime: true},
+		{name: "ignore future", future: true, ignoreTime: true},
+		{name: "ignore time with wrong expired pin", expired: true, ignoreTime: true, wrongPin: true, wantError: errCertificatePin},
+		{name: "ignore time with wrong future pin", future: true, ignoreTime: true, wrongPin: true, wantError: errCertificatePin},
+		{name: "default", noPin: true, wantTrustFailure: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			notBefore, notAfter := time.Now().Add(-2*time.Hour), time.Now().Add(time.Hour)
+			if tc.expired {
+				notAfter = time.Now().Add(-time.Hour)
+			}
+			if tc.future {
+				notBefore, notAfter = time.Now().Add(time.Hour), time.Now().Add(2*time.Hour)
+			}
+			cert, leaf := bareCertificate(t, notBefore, notAfter)
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) }))
 			server.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
 			server.StartTLS()
 			defer server.Close()
 			hash := sha256.Sum256(leaf.Raw)
-			s := Service{UpstreamURL: server.URL, CertificatePin: hex.EncodeToString(hash[:])}
-			if mode == "wrong" {
+			s := Service{UpstreamURL: server.URL, CertificatePin: hex.EncodeToString(hash[:]), IgnoreCertificateTime: tc.ignoreTime}
+			if tc.wrongPin {
 				s.CertificatePin = strings.Repeat("00", 32)
 			}
-			if mode == "default" {
+			if tc.noPin {
 				s.CertificatePin = ""
 			}
 			transport, err := newTransport(s)
@@ -321,7 +339,7 @@ func TestCertificatePinWithoutSAN(t *testing.T) {
 			defer transport.CloseIdleConnections()
 			client := &http.Client{Transport: transport, Timeout: 3 * time.Second}
 			resp, err := client.Get(server.URL)
-			if mode == "correct" {
+			if tc.wantError == nil && !tc.wantTrustFailure {
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -330,11 +348,8 @@ func TestCertificatePinWithoutSAN(t *testing.T) {
 				finish(resp)
 				t.Fatal("invalid certificate accepted")
 			}
-			if mode == "wrong" && !errors.Is(err, errCertificatePin) {
-				t.Fatal("pin mismatch not detected")
-			}
-			if mode == "expired" && !errors.Is(err, errPinnedCertificateTime) {
-				t.Fatal("expired pin accepted")
+			if tc.wantError != nil && !errors.Is(err, tc.wantError) {
+				t.Fatalf("wrong certificate error: %v", err)
 			}
 		})
 	}
@@ -357,6 +372,16 @@ func TestPinValidationAndCacheInvalidation(t *testing.T) {
 	second, err := a.proxyTransport(s)
 	if err != nil || first == second {
 		t.Fatal("certificate pin change reused old transport")
+	}
+	s.IgnoreCertificateTime = true
+	third, err := a.proxyTransport(s)
+	if err != nil || second == third {
+		t.Fatal("ignoring certificate time reused the strict transport")
+	}
+	s.IgnoreCertificateTime = false
+	fourth, err := a.proxyTransport(s)
+	if err != nil || third == fourth {
+		t.Fatal("restoring certificate time checks reused the permissive transport")
 	}
 }
 func TestLiveNanoReadOnly(t *testing.T) {

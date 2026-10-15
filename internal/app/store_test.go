@@ -139,6 +139,49 @@ func TestServiceValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestIgnoreCertificateTimeConfiguration(t *testing.T) {
+	cfg := Config{PortalURL: "https://control.example.com", DeviceDomain: "devices.example.com"}
+	for _, raw := range []string{"https://192.168.1.13", "http://192.168.1.13"} {
+		s := Service{Name: "GLKVM", Slug: "glkvm", Type: "glinet", UpstreamURL: raw, IgnoreCertificateTime: true}
+		if validateService(&s, cfg) == nil {
+			t.Fatal("time override accepted without a certificate pin")
+		}
+		if _, err := newTransport(s); err == nil {
+			t.Fatal("transport accepted a time override without a pin")
+		}
+	}
+	s := Service{ID: "glkvm", Name: "GLKVM", Slug: "glkvm", Type: "glinet", UpstreamURL: "https://192.168.1.13", CertificatePin: string(bytes.Repeat([]byte("01"), 32)), IgnoreCertificateTime: true}
+	if err := validateService(&s, cfg); err != nil {
+		t.Fatal(err)
+	}
+	store, err := OpenStore(t.TempDir(), bytes.Repeat([]byte{7}, 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	ctx := context.Background()
+	if err := store.Save(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := store.Get(ctx, s.ID)
+	if err != nil || !saved.IgnoreCertificateTime {
+		t.Fatal("time override was not persisted", err)
+	}
+	s.IgnoreCertificateTime = false
+	if err := store.Save(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	saved, err = store.Get(ctx, s.ID)
+	if err != nil || saved.IgnoreCertificateTime {
+		t.Fatal("time override was not disabled", err)
+	}
+	s.Type = "link"
+	s.IgnoreCertificateTime = true
+	if err := validateService(&s, cfg); err != nil || s.IgnoreCertificateTime || s.CertificatePin != "" {
+		t.Fatal("ordinary link retained the TLS override")
+	}
+}
 func TestAtomicSaveDuplicateSlug(t *testing.T) {
 	s, err := OpenStore(t.TempDir(), bytes.Repeat([]byte{1}, 32))
 	if err != nil {
