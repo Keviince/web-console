@@ -29,10 +29,9 @@ LABEL org.opencontainers.image.title="web-console" \
       org.opencontainers.image.version=$VERSION
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=backend /out/web-console /usr/local/bin/web-console
-COPY --from=backend --chown=10001:10001 /out/data /app/data
+COPY --from=backend /out/data /app/data
 COPY --from=frontend /src/web/dist /app/web/dist
 WORKDIR /app
-USER 10001:10001
 EXPOSE 8080
 ENV LISTEN=:8080 DATA_DIR=/app/data WEB_ROOT=/app/web/dist
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

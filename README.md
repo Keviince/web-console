@@ -42,18 +42,18 @@
 ```bash
 cp .env.example .env
 # 编辑 .env 中的域名、OIDC_ISSUER、OIDC_CLIENT_ID、OIDC_ALLOWED_SUB。
-mkdir -p secrets
-chmod 700 secrets
+mkdir -p secrets data
+chmod 700 secrets data
 # 首次发布 GHCR 镜像后可直接拉取；本地构建方式见下文。
 docker compose pull
 docker run --rm ghcr.io/keviince/web-console:latest -generate-key > secrets/encryption_key
 # 使用文本编辑器将 Authentik Client Secret 写入 secrets/oidc_client_secret。
-chmod 444 secrets/encryption_key secrets/oidc_client_secret
+chmod 600 secrets/encryption_key secrets/oidc_client_secret
 docker compose up -d
 docker compose ps
 ```
 
-镜像自动匹配 `linux/amd64` / `linux/arm64`，以 UID 10001 运行，默认只映射宿主机 `127.0.0.1:8080`。数据保存在命名卷 `web-console_data`。反向代理位于其他主机时，请将 `BIND_ADDRESS` 改为可达的 LAN 地址并配置访问限制。
+镜像自动匹配 `linux/amd64` / `linux/arm64`，以 root（UID/GID 0）运行，默认只映射宿主机 `127.0.0.1:8080`。数据通过目录挂载保存在 Compose 文件旁的 `./data`，无需创建命名卷或设置 UID 10001。反向代理位于其他主机时，请将 `BIND_ADDRESS` 改为可达的 LAN 地址并配置访问限制。已有命名卷部署需先按 [部署指南](docs/deployment.md#数据与密钥) 迁移数据，再使用新配置启动。
 
 **从源码构建：**
 
@@ -112,7 +112,6 @@ export OIDC_CLIENT_SECRET_FILE="$PWD/secrets/oidc_client_secret"
 | `WEB_ROOT` | 前端生产资源目录 | `web/dist` |
 | `DEV_HTTP` | 仅用于 localhost / 回环地址的 HTTP 开发 | `false` |
 | `WEBCONSOLE_IMAGE` | Compose 镜像 | `ghcr.io/keviince/web-console:latest` |
-| `DATA_VOLUME` | Compose 数据卷 | `web-console_data` |
 
 程序直接启动时需要自行导出环境变量；Compose 自动读取 `.env`。请离线备份数据库与原加密密钥，丢失密钥将无法解密已保存的设备凭据。备份、迁移、反向代理和排障见 [部署指南](docs/deployment.md)。
 

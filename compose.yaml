@@ -17,19 +17,9 @@ services:
       - encryption_key
       - oidc_client_secret
     volumes:
-      - web_console_data:/app/data
-    read_only: true
-    tmpfs:
-      - /tmp
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
+      - ./data:/app/data
 secrets:
   encryption_key:
     file: ./secrets/encryption_key
   oidc_client_secret:
     file: ./secrets/oidc_client_secret
-volumes:
-  web_console_data:
-    name: ${DATA_VOLUME:-web-console_data}

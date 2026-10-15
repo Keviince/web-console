@@ -43,22 +43,39 @@ docker compose exec -T web-console /usr/local/bin/web-console -test-device <设�
 
 ## 数据与密钥
 
-容器以 UID 10001 运行，数据保存在 `/app/data`。`secrets` 目录建议 0700，Compose 的 secret 文件可设 0444，让非 root 容器读取；二进制部署的 secret 可设为运行用户可读的 0600。
+容器以 root（UID/GID 0）运行，将 Compose 文件旁的宿主机 `./data` 目录挂载到 `/app/data`，不使用命名卷，也不需要将目录所有者设为 UID 10001。首次部署执行 `mkdir -p data secrets && chmod 700 data secrets`，两个 secret 文件设为 0600；二进制部署时也应确保运行用户能读取 secret 并写入数据目录。
 
-不要更换已有数据库的加密密钥。备份前停止服务，完整备份数据卷及 `.env`、两个 secret；不要仅复制运行中的 `.db` 而忽略 WAL。
+Dockerfile 和 Compose 均不指定运行用户，使用新镜像默认的 root 用户。升级时需拉取包含此修改的新镜像，或从源码重新构建；旧镜像仍可能默认使用 UID 10001。
+
+Compose 中的 `volumes:` 服务字段用于声明目录挂载，`./data:/app/data` 是 bind mount，不会创建 Docker 命名卷。`read_only`、`tmpfs`、`cap_drop` 和 `security_opt` 都是可选安全加固，默认配置已移除：只读根文件系统仍允许写入 data 挂载目录；`tmpfs` 仅提供临时目录；`cap_drop: ALL` 会让 root 无法绕过旧文件的所有者权限；`no-new-privileges` 阻止进程通过执行文件获取新权限。按部署需要可自行启用。
+
+不要更换已有数据库的加密密钥。备份前停止服务，完整备份 `data/` 及 `.env`、两个 secret；不要仅复制运行中的 `.db` 而忽略 WAL。
 
 ```bash
 mkdir -p backups
 docker compose stop web-console
-# 将 <实际卷名> 替换为已通过 docker volume ls 核实的卷名。
-docker run --rm -v <实际卷名>:/data:ro -v "$PWD/backups:/backup" alpine:3.23 \
-  tar czf /backup/web-console-data.tgz -C /data .
+sudo tar czf backups/web-console-data.tgz -C data .
 docker compose start web-console
 ```
 
-将 `.env` 和 `secrets/` 另行备份到受保护的离线位置。恢复时停止服务，将归档解压到新卷，保留 UID 10001，恢复原密钥与 OIDC 配置，设置 `DATA_VOLUME` 为新卷名后启动。
+将 `.env` 和 `secrets/` 另行备份到受保护的离线位置。恢复时停止服务，将归档解压到空的 `./data` 目录，执行 `sudo chown -R 0:0 data && sudo chmod 700 data`，恢复原密钥与 OIDC 配置后启动。
 
-从旧 WebConsole / WebControl 迁移时先停止旧服务，将新 `.env` 的 `DATA_VOLUME` 设置为原实际卷名（例如旧默认 `webconsole_webconsole_data`），保留原密钥、OIDC 配置与域名。新程序兼容 `webconsole.db` 与 `webcontrol.db`。不要同时让两个实例使用同一数据卷。协议路径 `/__webconsole/*` 和诊断响应头保持兼容。
+从已有命名卷或旧 WebConsole / WebControl 迁移时，先在旧配置下停止服务并核实原实际卷名（例如 `web-console_data` 或 `webconsole_webconsole_data`），再将全部数据复制到空的 `./data` 目录：
+
+```bash
+docker compose stop web-console
+docker volume ls
+mkdir -p data
+# 将 <实际卷名> 替换为已核实的卷名；data 必须是空目录。
+docker run --rm \
+  --mount type=volume,source=<实际卷名>,target=/old-data,readonly \
+  --mount "type=bind,source=$PWD/data,target=/new-data" \
+  alpine:3.23 sh -c 'cp -a /old-data/. /new-data/ && chown -R 0:0 /new-data && chmod 700 /new-data'
+# 替换 compose.yaml 为新的目录挂载配置，删除 .env 中的 DATA_VOLUME。
+docker compose up -d --force-recreate web-console
+```
+
+保留原密钥、OIDC 配置与域名；验证数据正常后再考虑清理旧卷。新程序兼容 `webconsole.db` 与 `webcontrol.db`。不要同时让两个实例使用同一数据目录。协议路径 `/__webconsole/*` 和诊断响应头保持兼容。
 
 ## 本地开发
 

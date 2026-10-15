@@ -12,7 +12,7 @@ python scripts/release.py --version v0.1.0
 
 每份安装包包含可执行程序 `web-console`、`web/dist`、配置示例、文档及许可证。请一起部署这些文件。源码 ZIP 使用明确的文件清单，排除本地配置、数据库、密钥、编译缓存和部署记录；上传 GitHub 应使用这份源码。
 
-Dockerfile 使用构建机执行 Node 和 Go 构建，再交叉编译目标架构；最终 scratch 镜像仅包含程序、CA 证书和前端，以 UID 10001 运行，自带程序健康检查。
+Dockerfile 使用构建机执行 Node 和 Go 构建，再交叉编译目标架构；最终 scratch 镜像仅包含程序、CA 证书和前端，以 root（UID/GID 0）运行，自带程序健康检查。Compose 将宿主机 `./data` 挂载到 `/app/data`。
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
