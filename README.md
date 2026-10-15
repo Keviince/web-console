@@ -14,7 +14,7 @@
 
 - 🎯 **设备工作台**：中文响应式界面，支持分组、搜索、备注及连接测试。
 - 🔐 **统一身份认证**：OIDC 授权码 + PKCE，校验签名、state、nonce 与允许访问的个人 subject。
-- 🖥️ **原生快速登录**：支持 PiKVM、NanoKVM、BliKVM、OpenWrt、PVE、ESXi、TP-Link 国内 SLP 及小米路由器。
+- 🖥️ **原生快速登录**：支持 PiKVM、NanoKVM、BliKVM、GL.iNet KVM、OpenWrt、PVE、ESXi、TP-Link 国内 SLP 及小米路由器。
 - 🌐 **独立子域名代理**：每台设备隔离会话和 Cookie，支持 HTTP(S)、WebSocket、MJPEG、上传及下载。
 - 🛡️ **加密凭据存储**：AES-256-GCM + SQLite；加密密钥与数据库分开保存。
 - 🔗 **通用接入**：其他后台可选择「手动登录代理」或「普通链接」。

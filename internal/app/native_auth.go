@@ -33,7 +33,7 @@ type nativeAuth struct {
 }
 
 func quickLoginKind(kind string) bool {
-	return kind == "pve" || kind == "esxi" || kind == "tplink" || kind == "xiaomi"
+	return kind == "pve" || kind == "esxi" || kind == "tplink" || kind == "xiaomi" || kind == "glinet"
 }
 
 func nativeSession(c *http.Client, s Service) nativeAuth {
@@ -61,6 +61,9 @@ func clearNativeSession(c *http.Client, s Service) {
 	u, _ := url.Parse(s.UpstreamURL + "/")
 	for _, name := range []string{"PVEAuthCookie", "vmware_soap_session"} {
 		c.Jar.SetCookies(u, []*http.Cookie{{Name: name, Path: "/", MaxAge: -1}})
+	}
+	if s.Type == "glinet" {
+		c.Jar.SetCookies(u, []*http.Cookie{{Name: "auth_token", Path: "/", MaxAge: -1}})
 	}
 }
 

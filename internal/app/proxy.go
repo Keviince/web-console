@@ -251,7 +251,7 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			var loginErr *proxyLoginError
 			if errors.As(err, &loginErr) {
-				if errors.Is(loginErr.err, errBliProtocol) || errors.Is(loginErr.err, errNativeProtocol) {
+				if errors.Is(loginErr.err, errBliProtocol) || errors.Is(loginErr.err, errNativeProtocol) || errors.Is(loginErr.err, errGLProtocol) {
 					requestID := logDeviceFailure(a.log, "device page bridge failed", s, "page_bridge", loginErr.err)
 					w.Header().Set("X-WebConsole-Request-ID", requestID)
 				}
@@ -349,7 +349,7 @@ func (t *deviceRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) 
 	if t.service.Type == "proxy" || manual || nativeInfo(r).Logout || !adapterFor(t.service.Type).Expired(resp) {
 		return resp, nil
 	}
-	if !safeDeviceRequest(r) {
+	if !safeDeviceRequest(r) || t.service.Type == "glinet" && !glinetSafeRequest(r) {
 		resp.Header.Set("X-WebConsole-Session-Expired", "true")
 		return resp, nil
 	}
@@ -425,6 +425,9 @@ func (t *deviceRoundTripper) send(r *http.Request) (*http.Response, error) {
 	return resp, err
 }
 func (t *deviceRoundTripper) addSessionCookies(resp *http.Response) {
+	if t.service.Type == "glinet" {
+		return
+	}
 	u := resp.Request.URL
 	for _, c := range t.session.Jar.Cookies(u) {
 		if authCookie(c.Name) {
@@ -438,6 +441,9 @@ func (t *deviceRoundTripper) addSessionCookies(resp *http.Response) {
 }
 func authCookie(name string) bool { return name == "auth_token" || strings.HasPrefix(name, "sysauth") }
 func (a *App) publishDeviceCookies(w http.ResponseWriter, s Service, g *gatewaySession) {
+	if s.Type == "glinet" {
+		return
+	}
 	if s.Type == "nanokvm" {
 		a.publishNanoMarker(w.Header(), g.Expires)
 		return

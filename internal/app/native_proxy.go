@@ -30,6 +30,10 @@ func setRequestBody(r *http.Request, b []byte) {
 
 func prepareNativeRequest(r *http.Request, s Service, g *gatewaySession) *http.Request {
 	info := nativeRequestInfo{}
+	if s.Type == "glinet" {
+		info.Login = r.Method == "POST" && r.URL.Path == "/api/auth/login"
+		info.Logout = r.Method == "POST" && r.URL.Path == "/api/auth/logout"
+	}
 	if s.Type == "xiaomi" {
 		info.Login = r.Method == "POST" && r.URL.Path == "/cgi-bin/luci/api/xqsystem/login"
 		info.Logout = strings.HasSuffix(r.URL.Path, "/web/logout") || strings.HasSuffix(r.URL.Path, "/api/xqsystem/logout")
@@ -130,6 +134,8 @@ func applyNativeAuth(r *http.Request, s Service, g *gatewaySession) {
 	c := &http.Client{Jar: g.Jar}
 	auth := nativeSession(c, s)
 	switch s.Type {
+	case "glinet":
+		applyGlinetAuth(r, s, g)
 	case "pve":
 		r.Header.Del("CSRFPreventionToken")
 		if auth.CSRF != "" {
@@ -301,6 +307,11 @@ func visitESXiReferences(root *soapNode, visit func(string)) {
 func (t *deviceRoundTripper) captureNativeResponse(resp *http.Response) error {
 	s, g := t.service, t.session
 	info := nativeInfo(resp.Request)
+	if s.Type == "glinet" && info.Login {
+		if err := captureGlinetLogin(resp, s, g); err != nil {
+			return err
+		}
+	}
 	if s.Type == "pve" && info.Login {
 		if err := capturePVELogin(resp, s, g); err != nil {
 			return err

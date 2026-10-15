@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       WEBCONSOLE_BLI_BROWSER_FIXTURE: ${{ github.workspace }}/blikvm-browser.json
+      WEBCONSOLE_GL_BROWSER_FIXTURE: ${{ github.workspace }}/glinet-browser.json
       WEBCONSOLE_NATIVE_BROWSER_FIXTURE: ${{ github.workspace }}/native-browser.json
       WEBCONSOLE_MANUAL_BROWSER_FIXTURE: ${{ github.workspace }}/manual-browser.json
       WEBCONSOLE_PROXY_BROWSER_FIXTURE: ${{ github.workspace }}/proxy-browser.json

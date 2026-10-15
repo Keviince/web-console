@@ -38,6 +38,9 @@ func adapterFor(kind string) deviceAdapter {
 	if kind == "blikvm" {
 		return blikvmAdapter{}
 	}
+	if kind == "glinet" {
+		return glinetAdapter{}
+	}
 	switch kind {
 	case "pve":
 		return pveAdapter{}
@@ -381,7 +384,7 @@ func (a *App) ensureLogin(ctx context.Context, s Service, g *gatewaySession, fai
 		if errors.As(err, &limited) {
 			g.RetryAfter = time.Now().Add(limited.retry)
 		}
-		if errors.Is(err, errBliRateLimit) || errors.Is(err, errNativeRateLimit) {
+		if errors.Is(err, errBliRateLimit) || errors.Is(err, errNativeRateLimit) || errors.Is(err, errGLRateLimit) {
 			g.RetryAfter = time.Now().Add(5 * time.Minute)
 		}
 	} else {

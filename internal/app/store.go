@@ -275,6 +275,8 @@ func validateService(s *Service, cfg Config) error {
 				s.EntryPath = "/#/"
 			} else if s.Type == "blikvm" {
 				s.EntryPath = "/matrix"
+			} else if s.Type == "glinet" {
+				s.EntryPath = "/#/"
 			} else if s.Type == "pve" || s.Type == "tplink" || s.Type == "proxy" {
 				s.EntryPath = "/"
 			} else if s.Type == "esxi" {

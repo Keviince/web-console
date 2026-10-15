@@ -99,11 +99,11 @@ func deviceFailureReason(err error) string {
 		return "session_expired"
 	case errors.Is(err, errLogin):
 		return "login_rejected"
-	case errors.Is(err, errNanoInteractive), errors.Is(err, errBliInteractive), errors.Is(err, errNativeInteractive):
+	case errors.Is(err, errNanoInteractive), errors.Is(err, errBliInteractive), errors.Is(err, errNativeInteractive), errors.Is(err, errGLInteractive):
 		return "interactive_auth_required"
-	case errors.Is(err, errBliRateLimit), errors.Is(err, errNativeRateLimit):
+	case errors.Is(err, errBliRateLimit), errors.Is(err, errNativeRateLimit), errors.Is(err, errGLRateLimit):
 		return "login_rate_limited"
-	case errors.Is(err, errBliProtocol), errors.Is(err, errNativeProtocol):
+	case errors.Is(err, errBliProtocol), errors.Is(err, errNativeProtocol), errors.Is(err, errGLProtocol):
 		return "unsupported_login_protocol"
 	case errors.Is(err, sql.ErrNoRows):
 		return "credentials_missing"

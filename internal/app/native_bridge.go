@@ -52,6 +52,10 @@ const config=%s, marker=%q;
 const remove=Storage.prototype.removeItem;
 function cookie(name,value){document.cookie=name+'='+encodeURIComponent(value)+';path=/;SameSite=Strict;expires='+config.expires+(location.protocol==='https:'?';Secure':'');}
 function logout(){config.authenticated=false;cookie('wc_native_manual',config.csrf);fetch('/__webconsole/native/logout',{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({csrf:config.csrf})}).catch(()=>{});}
+if(config.kind==='glinet'){
+ if(config.authenticated){localStorage.setItem('gl-kvm-token-keys',JSON.stringify({glkvm:marker}));localStorage.setItem('gl-kvm-token-key',marker);cookie('auth_token',marker);}
+ else{remove.call(localStorage,'gl-kvm-token-keys');remove.call(localStorage,'gl-kvm-token-key');document.cookie='auth_token=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT';}
+}
 if(config.kind==='pve'){
  remove.call(localStorage,'ProxmoxUser');
  if(config.authenticated)cookie('PVEAuthCookie',marker);else document.cookie='PVEAuthCookie=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -217,6 +221,10 @@ func nativeGatewayCookies(header http.Header, s Service, devHTTP bool) {
 	cookies := (&http.Response{Header: header}).Cookies()
 	header.Del("Set-Cookie")
 	for _, cookie := range cookies {
+		if s.Type == "glinet" && cookie.Name == "auth_token" {
+			cookie.Value = nativeBrowserMarker
+			cookie.HttpOnly = false
+		}
 		if s.Type == "esxi" && cookie.Name == "vmware_soap_session" {
 			continue
 		}
