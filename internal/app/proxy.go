@@ -72,7 +72,7 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 		g.authMu.Lock()
 		g.Manual = true
 		if s.Type == "blikvm" {
-			saveBlikvmSession(&http.Client{Jar: g.Jar}, s, blikvmAuth{})
+			clearBlikvmSession(&http.Client{Jar: g.Jar}, s)
 		}
 		if quickLoginKind(s.Type) {
 			clearNativeSession(&http.Client{Jar: g.Jar}, s)
@@ -80,9 +80,6 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 		g.authMu.Unlock()
 		entry := manualEntry(s)
 		http.Redirect(w, r, entry, http.StatusSeeOther)
-		return
-	}
-	if s.Type == "blikvm" && a.serveBlikvmBridge(w, r, s, g) {
 		return
 	}
 	if quickLoginKind(s.Type) && a.serveNativeBridge(w, r, s, g) {
@@ -179,7 +176,7 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 			}
 			if s.Type == "blikvm" {
 				p.Out.Header.Del("Username")
-				if documentNavigation(r) || r.URL.Path == "/api/login" {
+				if r.URL.Path == blikvmAPI+"/auth/login" || r.URL.Path == blikvmAPI+"/auth/logout" {
 					p.Out.Header.Set("Accept-Encoding", "identity")
 				}
 			}
@@ -212,10 +209,8 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 					return err
 				}
 			}
-			if s.Type == "blikvm" && documentNavigation(r) {
-				if err := bridgeBlikvmHTML(resp, s, g, t); err != nil {
-					return err
-				}
+			if s.Type == "blikvm" && strings.HasPrefix(r.URL.Path, blikvmAPI+"/auth/") {
+				resp.Header.Set("Cache-Control", "no-store")
 			}
 			if quickLoginKind(s.Type) {
 				if err := bridgeNativeResponse(resp, s, g); err != nil {
@@ -237,7 +232,7 @@ func (a *App) serveDevice(w http.ResponseWriter, r *http.Request, s Service) {
 			cookies := resp.Cookies()
 			resp.Header.Del("Set-Cookie")
 			for _, cookie := range cookies {
-				if internalCookie(cookie.Name) {
+				if internalCookie(cookie.Name) || s.Type == "blikvm" && cookie.Name == blikvmSessionCookie {
 					continue
 				}
 				cookie.Domain = ""
@@ -343,6 +338,13 @@ func (t *deviceRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) 
 		g.Manual = true
 		g.authMu.Unlock()
 	}
+	if t.service.Type == "blikvm" && r.Method == "POST" && r.URL.Path == blikvmAPI+"/auth/logout" {
+		g.authMu.Lock()
+		g.Manual = true
+		g.Version++
+		g.authMu.Unlock()
+		manual = true
+	}
 	resp, err := t.send(r)
 	if err != nil {
 		return nil, err
@@ -383,7 +385,7 @@ func (t *deviceRoundTripper) send(r *http.Request) (*http.Response, error) {
 	}
 	cookies := map[string]*http.Cookie{}
 	for _, c := range out.Cookies() {
-		if !internalCookie(c.Name) {
+		if !internalCookie(c.Name) && !(t.service.Type == "blikvm" && c.Name == blikvmSessionCookie) {
 			cookies[c.Name] = c
 		}
 	}
@@ -397,7 +399,7 @@ func (t *deviceRoundTripper) send(r *http.Request) (*http.Response, error) {
 		out.AddCookie(c)
 	}
 	if t.service.Type == "blikvm" {
-		applyBlikvmAuth(out, t.service, t.session)
+		applyBlikvmAuth(out)
 	}
 	if quickLoginKind(t.service.Type) {
 		applyNativeAuth(out, t.service, t.session)
@@ -417,8 +419,9 @@ func (t *deviceRoundTripper) send(r *http.Request) (*http.Response, error) {
 				return nil, &proxyLoginError{captureErr}
 			}
 		}
-		if t.service.Type == "blikvm" && out.Method == "POST" && out.URL.Path == "/api/login" && resp.StatusCode == 200 {
-			if captureErr := captureBlikvmLogin(resp, t.service, t.session); captureErr != nil {
+		if t.service.Type == "blikvm" {
+			if captureErr := captureBlikvmResponse(resp, t.service, t.session); captureErr != nil {
+				_ = resp.Body.Close()
 				return nil, &proxyLoginError{captureErr}
 			}
 		}

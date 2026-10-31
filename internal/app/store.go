@@ -276,7 +276,7 @@ func validateService(s *Service, cfg Config) error {
 			} else if s.Type == "nanokvm" {
 				s.EntryPath = "/#/"
 			} else if s.Type == "blikvm" {
-				s.EntryPath = "/matrix"
+				s.EntryPath = "/"
 			} else if s.Type == "glinet" {
 				s.EntryPath = "/#/"
 			} else if s.Type == "pve" || s.Type == "tplink" || s.Type == "proxy" {

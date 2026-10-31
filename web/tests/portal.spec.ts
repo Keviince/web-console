@@ -112,7 +112,7 @@ test('native BliKVM has its own login adapter and entry', async ({ page }) => {
   await page.getByLabel('账号', { exact: true }).fill('admin')
   await page.getByLabel('密码', { exact: true }).fill('local-fixture-secret')
   await page.getByRole('button', { name: '高级配置：入口路径与可信证书' }).click()
-  await expect(page.getByLabel('入口路径')).toHaveAttribute('placeholder', '/matrix')
+  await expect(page.getByLabel('入口路径')).toHaveAttribute('placeholder', '/')
   const saved = page.waitForRequest(r => r.url().endsWith('/api/services') && r.method() === 'POST')
   await page.getByRole('button', { name: '保存设备' }).click()
   expect((await saved).postDataJSON()).toMatchObject({ type: 'blikvm', credentials: { username: 'admin', password: 'local-fixture-secret' } })

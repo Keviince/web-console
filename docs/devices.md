@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | PiKVM | `https://192.168.1.10` | `/kvm/` | 标准 `/api/auth/login` 与 `/api/auth/check`；包括使用兼容 PiKVM 固件的 BliKVM |
 | NanoKVM | `https://192.168.1.11` | `/#/` | 当前 JSON 账号密码协议，支持 Cookie / JWT；旧 AES 密码协议需另行适配 |
-| BliKVM | `https://192.168.1.12` | `/matrix` | 原生 BliKVM JSON / Bearer 协议，与 PiKVM 固件区分 |
+| BliKVM | `https://192.168.1.12` | `/` | BliKVM 3.x `/api/v1` JSON / HttpOnly Cookie 协议，与 PiKVM 固件区分 |
 | GL.iNet KVM | `https://192.168.1.13` | `/#/` | GLKVM 原生表单 / token 协议；本地账号固定为 admin，开启 2FA 时使用原页面手动登录 |
 | OpenWrt | `http://192.168.1.1` | `/cgi-bin/luci/` | 标准 LuCI 表单及原页面隐藏字段 |
 | PVE | `https://192.168.1.20:8006` | `/` | 完整账号如 `root@pam`；未填写 realm 时使用 pam |
@@ -23,6 +23,8 @@
 PVE、ESXi、BliKVM 及路由器的票据与页面状态按原生协议衔接。部分设备退出 API 会影响其他客户端，因此 NanoKVM 等类型在门户撤销时只丢弃代理会话并关闭连接。
 
 验证码或二次验证请在原页面完成。LuCI 私有加密登录、不同型号固件、原生视频控制台等需要按实际固件验证。PiKVM 可使用 Direct H.264 / MJPEG；WebRTC UDP/P2P 媒体取决于网络连通性。
+
+BliKVM 适配 BliKVM 3.x：通过 `/api/v1/auth/state` 检查协议，使用 `/api/v1/auth/login` 登录，原页面通过 `/api/v1/auth/me` 恢复账号、角色和权限。真实 `blikvm_session` Cookie 仅保存在后端，HTTP、MJPEG、下载、会话 WebSocket 和 WebRTC 信令均由代理补全认证；不再使用旧版 `/api/login` Bearer 协议及 Pinia 页面桥接。默认入口为 `/`，已有设备可将原 `/matrix` 入口改为 `/`。启用账号 2FA 时使用原页面输入密码和验证码；原页面退出会清除代理会话并关闭连接，不会立即自动登录。门户撤销和连接测试只丢弃本地会话。WebRTC 媒体仍需要浏览器与设备之间的网络可达。
 
 GL.iNet KVM 请填写最终 HTTPS 地址；HTTP 跳转不会自动信任设备证书。自签名证书可在高级配置中导入可信证书或填写已核对的 SHA-256 指纹。适配器会先检查设备已初始化且未启用 2FA，再使用保存的 admin 密码登录；启用 2FA 时点击「使用原页面手动登录」，在原页面输入密码和验证码。浏览器仅保存会话标记，真实 token 留在后端，HTTP、下载和 WebSocket 的认证由代理补全。GLKVM 的部分电源、固件、存储操作使用 GET，因此仅明确识别的读取接口会自动恢复重试。门户撤销和连接测试仅丢弃本地会话，原页面的「退出登录」仍转发到设备。当前适配依据 GLKVM 公开接口与原生前端；实际登录、控制台和媒体仍需在对应固件上验证。
 

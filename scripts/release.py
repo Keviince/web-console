@@ -11,7 +11,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_FILES = (
-    ".gitignore", ".dockerignore", ".env.example", "README.md", "LICENSE",
+    ".gitignore", ".dockerignore", ".env.example", "README.md", "README.en.md", "LICENSE",
     "go.mod", "go.sum", "Dockerfile", "compose.yaml", "compose.build.yaml",
     "web/package.json", "web/package-lock.json", "web/index.html",
     "web/tsconfig.json", "web/vite.config.ts", "web/playwright.config.ts",
@@ -71,7 +71,7 @@ def main():
         run(["go", "build", "-trimpath", "-buildvcs=false", "-ldflags",
              f"-s -w -X main.version={args.version}", "-o", str(stage / "web-console"),
              "./cmd/web-console"], env=env)
-        for filename in ("README.md", "LICENSE", ".env.example"):
+        for filename in ("README.md", "README.en.md", "LICENSE", ".env.example"):
             shutil.copy2(ROOT / filename, stage / filename)
         for directory in ("docs", "deploy", "web/dist"):
             shutil.copytree(ROOT / directory, stage / directory, dirs_exist_ok=True)

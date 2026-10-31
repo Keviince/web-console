@@ -33,11 +33,12 @@ for (const kind of ['pve', 'esxi', 'tplink', 'xiaomi']) {
       expect((await logout).postDataJSON()).toHaveProperty('csrf')
     }
     if (kind === 'esxi') {
+      const host = new URL(page.url()).host
       const state = await page.evaluate(() => JSON.parse(localStorage.getItem('vmware_esx_host_state')!))
-      expect(state).toMatchObject({ vmware_esx_host: '127.0.0.1:5173', csrf_token: 'webconsole-session' })
+      expect(state).toMatchObject({ vmware_esx_host: host, csrf_token: 'webconsole-session' })
       expect(state).toMatchObject({ filters: [], longpoll_version: '', settings: { theme: 'dark' } })
       expect(state.webconsoleSession).toBeTruthy()
-      expect(await page.evaluate(() => document.cookie)).toContain('vmware_esx_host=127.0.0.1%3A5173')
+      expect(await page.evaluate(() => document.cookie)).toContain('vmware_esx_host=' + encodeURIComponent(host))
       expect(await page.evaluate(() => document.cookie)).not.toContain('vmware_soap_session')
     }
     expect(errors).toEqual([])
